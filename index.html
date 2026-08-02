@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capstone: Refresh / Content Opportunity Scoring</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 2rem; }
+        h1, h2, h3 { color: #111; border-bottom: 1px solid #eaeaea; padding-bottom: 0.3em; }
+        .abstract { font-weight: 500; font-style: italic; background: #f6f8fa; padding: 1.5rem; border-left: 4px solid #0366d6; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+        th, td { border: 1px solid #dfe2e5; padding: 8px 13px; text-align: left; }
+        th { background-color: #f6f8fa; }
+        /* CSS Chart Styles */
+        .chart-container { margin: 2rem 0; padding: 1rem; border: 1px solid #eaeaea; border-radius: 6px; }
+        .bar-group { margin-bottom: 1rem; }
+        .bar-label { font-weight: bold; margin-bottom: 0.2rem; display: block; }
+        .bar { height: 30px; background-color: #0366d6; color: white; display: flex; align-items: center; padding-left: 10px; border-radius: 3px; }
+        .baseline-bar { width: 59%; background-color: #6a737d; }
+        .rf-bar { width: 80%; background-color: #28a745; }
+    </style>
+</head>
+<body>
+
+    <h1>Refresh / Content Opportunity Scoring</h1>
+    <p><strong>Author:</strong> Yousaf Atiq | <strong>Track:</strong> Machine Learning</p>
+
+    <h2>Abstract</h2>
+    <div class="abstract">
+        How can search engineering teams accurately detect web pages before they completely lose their organic rankings? This paper presents a machine learning approach using raw traffic and engagement metrics from 240,691 page records in the FlyRank March 2026 warehouse split. I trained a Random Forest Classifier using features such as Search Console impressions, clicks, GA4 sessions, content age, and word count to predict page decay (average position > 10). Evaluated on an 80/20 train-test holdout set, the model achieved a ROC-AUC of 0.7984 compared to 0.5921 for the Week 4 heuristic baseline. The final output is an automated, prioritized action queue that enables editorial teams to optimize their content refresh pipeline with high confidence.
+    </div>
+
+    <h2>Introduction / Problem Statement</h2>
+    <p>This work supports the editorial decision of <strong>which decaying web pages should be prioritized for content refreshes</strong>. The unit of analysis is a single web page on a specific reporting date. If the model incorrectly flags a healthy page (False Positive), engineering time is wasted rewriting it. If the model misses a decay (False Negative), the client loses organic traffic and revenue. Machine learning improves this process by evaluating non-linear interactions across traffic metrics and content age simultaneously.</p>
+
+    <h2>Data</h2>
+    <ul>
+        <li><strong>Release:</strong> FlyRank Internship Warehouse (March 2026 split).</li>
+        <li><strong>Tables:</strong> <code>fact_content_daily_performance</code> joined with <code>dim_content</code>.</li>
+        <li><strong>Exclusions & Safety:</strong> Explicitly excluded records where <code>ga4_data_available IS FALSE</code> to eliminate zero-filled null sessions. Deliberately removed product-derived flag columns to prevent label leakage. All data is public-safe with no client-identifying names, domains, or credentials included.</li>
+    </ul>
+
+    <h2>Methodology</h2>
+    <ul>
+        <li><strong>Features:</strong> <code>gsc_impressions</code>, <code>gsc_clicks</code>, <code>ga4_sessions</code>, <code>age_days</code>, <code>word_count</code>.</li>
+        <li><strong>Label Definition:</strong> <code>target_is_declining</code> = 1 if <code>gsc_avg_position > 10</code> else 0.</li>
+        <li><strong>Baseline:</strong> The Week 4 Heuristic Action Score (<code>age_days * LN(impressions + 1)</code>).</li>
+        <li><strong>Validation Design:</strong> Standard 80/20 train-test split. Both the Baseline and ML model were evaluated strictly on the exact same 20% holdout split to prevent leakage.</li>
+    </ul>
+
+    <h2>Results</h2>
+    <p>The Random Forest Classifier successfully captured complex engagement drops that the linear heuristic missed, resulting in a <strong>+34.83% lift</strong> in discrimination accuracy.</p>
+    
+    <div class="chart-container">
+        <h3>Model vs Baseline Performance (ROC-AUC)</h3>
+        <div class="bar-group">
+            <span class="bar-label">Week 4 Heuristic Baseline (0.5921)</span>
+            <div class="bar baseline-bar">59.2%</div>
+        </div>
+        <div class="bar-group">
+            <span class="bar-label">Random Forest Classifier (0.7984)</span>
+            <div class="bar rf-bar">79.8%</div>
+        </div>
+    </div>
+
+    <h2>Limitations & Honest Framing</h2>
+    <p>This is an observational, directional study designed for decision-support. I can predict which pages are decaying, but I cannot claim that refreshing them will <em>cause</em> a guaranteed ranking recovery. Furthermore, this model identifies correlations between user engagement signals and ranking drops; it does not reverse-engineer Google's algorithm.</p>
+
+    <h2>Ranked Recommendations</h2>
+    <p>The output yields an actionable playbook. Editors should review the daily ranked queue and apply targeted content updates to high-probability URLs.</p>
+    <table>
+        <tr>
+            <th>Content Hash ID</th>
+            <th>Impressions</th>
+            <th>Age (Days)</th>
+            <th>Decay Probability</th>
+            <th>Action</th>
+        </tr>
+        <tr><td>content_e7536a...</td><td>837</td><td>122</td><td>0.970</td><td>REFRESH_CONTENT</td></tr>
+        <tr><td>content_22f476...</td><td>950</td><td>122</td><td>0.967</td><td>REFRESH_CONTENT</td></tr>
+        <tr><td>content_facf42...</td><td>202</td><td>122</td><td>0.966</td><td>REFRESH_CONTENT</td></tr>
+    </table>
+
+    <h2>Reproducibility</h2>
+    <p>All data extraction, modeling, and validation scripts are available in the repository. The complete Jupyter Notebook (<code>capstone.ipynb</code>) and artifact outputs are located in the <a href="https://github.com/Usaf007/flyrankai-ml-internship/tree/main/work">work/ folder of this repository</a>. Random seeds were locked to <code>42</code>.</p>
+
+    <h2>Acknowledgments & Data Credit</h2>
+    <p>Built on the FlyRank ML Internship dataset hosted at <a href="https://flyrank.ai" target="_blank">https://flyrank.ai</a>.</p>
+
+</body>
+</html>
